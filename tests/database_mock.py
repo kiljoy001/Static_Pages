@@ -55,9 +55,14 @@ class MockDatabase(unittest.TestCase):
                 print(error)
         else:
             print('OK, table created.')
-        # Insert into database
-        for iterator, (key, value) in enumerate(test_form_data.items()):
-            connection.execute(f"insert into leads ({key}) values (?)", value)
+        # Insert into database0
+        try:
+            for iterator, (key, value) in enumerate(test_form_data.items()):
+                connection.execute(f"insert into leads ({key}) values (?)", value)
+            connection.commit()
+        except sqlite3.Error as error:
+            print(f"Data insertion failed :( \n {error}")
+            connection.close()
 
     def tearDownClass(cls) -> None:
         connection = sqlite3.connect(DB_NAME)
@@ -66,7 +71,6 @@ class MockDatabase(unittest.TestCase):
             connection.execute(f"DROP DATABASE {DB_NAME}")
             connection.commit()
             print("Database dropped!")
-            connection.close()
         except sqlite3.Error as error:
             print(f"{DB_NAME} Had and error dropping database. Error as follows: \n {error}")
         finally:
