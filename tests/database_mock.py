@@ -1,10 +1,10 @@
-import unittest
 import sqlite3
+from unittest import TestCase
 
 DB_NAME = "test.db"
 
 
-class MockDatabase(unittest.TestCase):
+class MockDatabase(TestCase):
     """
     tests Database connection methods to check if the right data is returned in the proper format
     """
@@ -27,7 +27,8 @@ class MockDatabase(unittest.TestCase):
             'phone_number': '15554567',
             'email': 'test@testdomain.com',
             'subject': 'Testing this out!',
-            'message': 'This is a test message, please ignore!'
+            'message': 'This is a test message, please ignore!',
+            'visible': 1
         }
         # Create database
         try:
@@ -64,6 +65,9 @@ class MockDatabase(unittest.TestCase):
             print(f"Data insertion failed :( \n {error}")
             connection.close()
 
+        cls.mock_db_config = DB_NAME
+
+    @classmethod
     def tearDownClass(cls) -> None:
         connection = sqlite3.connect(DB_NAME)
         # drop the database if it already exists

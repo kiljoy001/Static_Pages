@@ -30,7 +30,8 @@ class DatabaseOperation:
                     "phone_number TEXT NOT NULL,"
                     "email TEXT NOT NULL,"
                     "subject TEXT NOT NULL,"
-                    "message TEXT NOT NULL )"
+                    "message TEXT NOT NULL,"
+                    "visible INTEGER NOT NULL)"
                 )
                 self.connection.commit()
                 logging.info('Database table leads was created')
@@ -39,3 +40,32 @@ class DatabaseOperation:
                     logging.error('Table leads already exists')
                 else:
                     logging.error(f"Error detected:\n{error}")
+
+    def insert_contact(self, **data) -> bool:
+        """
+        Inserts data into leads table
+        """
+        try:
+            for iterator, (key, value) in enumerate(data.items()):
+                self.connection.execute(f"insert into leads ({key}) values (?)", value)
+            self.connection.commit()
+            logging.info("Data inserted into database")
+            return True
+        except sqlite3.Error as error:
+            logging.error(f"Data insertion failed :( \n {error}")
+            self.connection.close()
+            return False
+
+    def remove_contact(self):
+        """
+        Hides data from the front end instead of a hard delete - updates visible field to false
+        """
+        pass
+
+    def update_contact(self, data: dict):
+        """
+        Updates fields from
+        @param data:
+        @return:
+        """
+        pass
