@@ -3,6 +3,7 @@ Creates an in-memory sqlite database to run tests on.
 """
 import sqlite3
 import sys
+import logging
 from unittest import TestCase
 
 DB_NAME_FILENAME = ":memory:"
@@ -49,7 +50,7 @@ class MockDatabase(TestCase):
                 print(f"Unable to create database {DB_NAME_FILENAME}.\n{error}")
                 sys.exit(1)
 
-        # Insert into database0
+        # Seed test data into database
         try:
             cls.connection.execute(
                 "INSERT INTO leads (first_name, last_name, phone_number, email, subject, message, "
@@ -59,21 +60,11 @@ class MockDatabase(TestCase):
                 test_form_data,
             )
             cls.connection.commit()
-            print(f"Insertion into {DB_TABLE_NAME} succeeded")
+            logging.info("Insertion of test data into %s succeeded", DB_TABLE_NAME)
         except sqlite3.Error as error:
-            print(f"Data insertion failed :(\n{error}")
-            cls.connection.close()
+            logging.error("Test data insertion failed. Error: %s", error)
 
     @classmethod
     def tearDownClass(cls) -> None:
-        cls.connection = sqlite3.connect(DB_TABLE_NAME)
-        # drop the database if it already exists
-        try:
-            cls.connection.close()
-            print("Database dropped!")
-        except sqlite3.Error as error:
-            print(
-                f"{DB_TABLE_NAME} Had an error dropping database. Error as follows:\n{error}"
-            )
-        finally:
-            cls.connection.close()
+        cls.connection.close()
+        logging.info("Database has been dropped!")

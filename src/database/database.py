@@ -3,7 +3,6 @@ Module for interacting with sql database.
 """
 import sqlite3
 import logging
-import sys
 
 DB_NAME_FILENAME = "data.db"
 DB_TABLE_NAME = "leads"
@@ -17,73 +16,117 @@ class DatabaseOperation:
     def __init__(
         self,
         db_file_name: str = DB_NAME_FILENAME,
-        db_table_name: str = DB_TABLE_NAME,
         sqlite_connection: sqlite3.Connection = None,
-    ):
-        self.sqlite_connection = sqlite_connection
-        if self.sqlite_connection:
-            self.connection = self.sqlite_connection
+    ) -> None:
+        if sqlite_connection:
+            self.connection = sqlite_connection
         else:
             self.connection = sqlite3.connect(db_file_name)
         logging.basicConfig(
             filename="database.log", encoding="utf8", level=logging.DEBUG
         )
-        if self.connection:
-            # try to create database
-            try:
-                self.connection.execute(
-                    f"create table if not exists {db_table_name}("
-                    "id INTEGER PRIMARY KEY,"
-                    "first_name TEXT NOT NULL,"
-                    "last_name TEXT NOT NULL,"
-                    "phone_number TEXT NOT NULL,"
-                    "email TEXT NOT NULL,"
-                    "subject TEXT NOT NULL,"
-                    "message TEXT NOT NULL,"
-                    "visible INTEGER NOT NULL)"
-                )
-                self.connection.commit()
-                logging.info("Database %s created.", db_table_name)
-                logging.info("Database table %s was created", db_table_name)
-            except sqlite3.Error as error:
-                logging.error("Unable to create database %s. %s", db_file_name, error)
-                sys.exit(1)
 
-    def insert_data(self, data: dict, db_table_name: str = DB_TABLE_NAME) -> bool:
+    def create_leads_table(self, db_table_name: str) -> bool:
         """
-        Inserts data into leads table
+        Creates a new table with the fields id, first name, last name, phone number, email, subject, message & visible
+        @param db_table_name: name of the new table
+        @return: bool
         """
         try:
-            for key, value in data.items():
-                self.connection.execute(
-                    f"insert into {db_table_name} ({key}) values (?)", (value,)
-                )
-                self.connection.commit()
+            self.connection.execute(
+                f"create table if not exists {db_table_name}("
+                "id INTEGER PRIMARY KEY,"
+                "first_name TEXT NOT NULL,"
+                "last_name TEXT NOT NULL,"
+                "phone_number TEXT NOT NULL,"
+                "email TEXT NOT NULL,"
+                "subject TEXT NOT NULL,"
+                "message TEXT NOT NULL,"
+                "visible INTEGER NOT NULL)"
+            )
+            self.connection.commit()
+            logging.info("Database %s created.", db_table_name)
+            logging.info("Database table %s was created", db_table_name)
+            return True
+        except sqlite3.Error as error:
+            logging.error("Unable to create database %s. %s", DB_NAME_FILENAME, error)
+            return False
+
+    def insert_contact_data(self, data: dict) -> bool:
+        """
+        Inserts data into leads table
+        @type data: dict
+        """
+        try:
+            self.connection.execute(
+                "INSERT INTO leads (first_name, last_name, phone_number, email, subject, message, "
+                "visible)"
+                "VALUES (:first_name, :last_name, :phone_number, :email, :subject, :message, :visible)",
+                data,
+            )
+            self.connection.commit()
             logging.info("Data inserted into database")
             return True
         except sqlite3.Error as error:
             logging.error("Data insertion failed :(\n%s", error)
-            self.connection.close()
             return False
 
-    def disable_contact(self, data: dict, db_table_name: str = DB_TABLE_NAME) -> bool:
+    def disable_contact(self, data: str) -> bool:
         """
         Hides data from the front end instead of a hard delete - updates visible field to false
-        @param data:
-        @param db_table_name:
+        @param data: email address
         """
+        try:
+            self.connection.execute(f"UPDATE leads set visible=0 where email='{data}'")
+            self.connection.commit()
+            logging.info("Email address %s was disabled.", data)
+            return True
+        except sqlite3.Error as error:
+            logging.error("%s was not disabled. Error: %s", data, error)
+            return False
 
-    def update_contact(self, data: dict, db_table_name: str = DB_TABLE_NAME) -> bool:
+    def update_contact(self, data: dict) -> bool:
         """
-        Updates contacts from leads database
-        @param db_table_name:
-        @param data:
+        Updates contacts from leads database, updates all fields
+        @param data: dict[str|int]
+        @return: bool
+        """
+        try:
+            self.connection.execute(
+                "update leads set (first_name, last_name, phone_number, email, subject, message, "
+                "visible) = (:first_name, :last_name, :phone_number, :email, :subject, :message, "
+                ":visible)",
+                data,
+            )
+            self.connection.commit()
+            logging.info("Contact %s has been updated.", data["email"])
+            return True
+        except sqlite3.Error as error:
+            logging.error("%s was not updated Error: %s", data["email"], error)
+            return False
+
+    def get_contact(self, data: str) -> dict:
+        """
+        Returns contact by email address if marked visible
+        @param data: email address
         @return:
         """
-
-    def get_contact(self, data: dict, db_table_name: str = DB_TABLE_NAME):
-        """
-        @param data:
-        @param db_table_name:
-        @return:
-        """
+        d_keys = [
+            "first_name",
+            "last_name",
+            "phone_number",
+            "email",
+            "subject",
+            "message",
+        ]
+        try:
+            fetch = self.connection.execute(
+                f"select first_name, last_name, phone_number, email, subject, message"
+                f" from leads where visible = 1 and email = '{data}'"
+            )
+            returned_data = fetch.fetchall()
+            formatted_dict = dict(zip(d_keys, returned_data))
+            logging.info("Contact %s was found", data)
+            return formatted_dict
+        except sqlite3.Error as error:
+            logging.error("%s was not found. Error: %s", data, error)

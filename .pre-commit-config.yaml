@@ -21,3 +21,9 @@ repos:
           entry: pylint
           language: python
           types: [ python ]
+          args: [--errors-only]
+        - id: pytest
+          name: pytest
+          entry: pytest
+          language: python
+          types: [ python ]
