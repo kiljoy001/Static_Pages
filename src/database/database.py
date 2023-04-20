@@ -28,7 +28,8 @@ class DatabaseOperation:
 
     def create_leads_table(self, db_table_name: str) -> bool:
         """
-        Creates a new table with the fields id, first name, last name, phone number, email, subject, message & visible
+        Creates a new table with the fields id, first name,
+        last name, phone number, email, subject, message & visible
         @param db_table_name: name of the new table
         @return: bool
         """
@@ -39,7 +40,7 @@ class DatabaseOperation:
                 "first_name TEXT NOT NULL,"
                 "last_name TEXT NOT NULL,"
                 "phone_number TEXT NOT NULL,"
-                "email TEXT NOT NULL,"
+                "email TEXT UNIQUE NOT NULL,"
                 "subject TEXT NOT NULL,"
                 "message TEXT NOT NULL,"
                 "visible INTEGER NOT NULL)"
@@ -59,7 +60,12 @@ class DatabaseOperation:
         """
         try:
             self.connection.execute(
-                "INSERT INTO leads (first_name, last_name, phone_number, email, subject, message, "
+                "INSERT INTO leads (first_name,"
+                "last_name,"
+                "phone_number,"
+                "email,"
+                "subject,"
+                "message,"
                 "visible)"
                 "VALUES (:first_name, :last_name, :phone_number, :email, :subject, :message, :visible)",
                 data,
@@ -85,17 +91,19 @@ class DatabaseOperation:
             logging.error("%s was not disabled. Error: %s", data, error)
             return False
 
-    def update_contact(self, data: dict) -> bool:
+    def update_contact(self, data: dict, match: str) -> bool:
         """
         Updates contacts from leads database, updates all fields
-        @param data: dict[str|int]
+        @param match: is the email address to look for to do the update op
+        @param data: dict[str|int] Keys much match table columns
         @return: bool
         """
         try:
+            email_address = match
             self.connection.execute(
-                "update leads set (first_name, last_name, phone_number, email, subject, message, "
-                "visible) = (:first_name, :last_name, :phone_number, :email, :subject, :message, "
-                ":visible)",
+                f"update leads set (first_name, last_name, phone_number, email, subject, message, "
+                f"visible) = (:first_name, :last_name, :phone_number, :email, :subject, :message, "
+                f":visible) where email = '{email_address}'",
                 data,
             )
             self.connection.commit()
@@ -130,3 +138,4 @@ class DatabaseOperation:
             return formatted_dict
         except sqlite3.Error as error:
             logging.error("%s was not found. Error: %s", data, error)
+            return {}

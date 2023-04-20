@@ -5,6 +5,8 @@ import unittest
 from src.database.database import DatabaseOperation
 import tests.database_mock
 
+DB_FILENAME = "test.db"
+
 
 class MyTestCase(tests.database_mock.MockDatabase):
     """
@@ -27,9 +29,7 @@ class MyTestCase(tests.database_mock.MockDatabase):
             "visible": 1,
         }
         # Act
-        result = DatabaseOperation(":memory:", self.connection).insert_contact_data(
-            data
-        )
+        result = DatabaseOperation(DB_FILENAME).insert_contact_data(data)
         expected = True
         # Assert
         self.assertEqual(result, expected)
@@ -39,7 +39,7 @@ class MyTestCase(tests.database_mock.MockDatabase):
         Tests get contact method
         @return:
         """
-        d_keys = [
+        key_list = [
             "first_name",
             "last_name",
             "phone_number",
@@ -52,12 +52,12 @@ class MyTestCase(tests.database_mock.MockDatabase):
             "select first_name, last_name, phone_number, email, subject, message "
             "from leads where email = 'test@testdomain.com' and visible = 1"
         )
-        test_result = dict(zip(d_keys, direct_query.fetchall()))
+        test_result = dict(zip(key_list, direct_query.fetchall()))
 
         # Compare results
         self.assertEqual(
             test_result,
-            DatabaseOperation(":memory:", self.connection).get_contact(data),
+            DatabaseOperation(DB_FILENAME).get_contact(data),
         )
 
     def test_update_contact(self) -> None:
@@ -76,7 +76,7 @@ class MyTestCase(tests.database_mock.MockDatabase):
             "You will be sent to the republic army instead.",
             "visible": 1,
         }
-        DatabaseOperation(":memory:", self.connection).update_contact(data)
+        DatabaseOperation(DB_FILENAME).update_contact(data, "jYoda@jediorder.com")
         direct_query = self.connection.execute(
             "select first_name from leads where email = 'jYessler@republicarmy.com'"
         )
@@ -89,12 +89,30 @@ class MyTestCase(tests.database_mock.MockDatabase):
         @return:
         """
         data = "test@testdomain.com"
-        DatabaseOperation(":memory:", self.connection).disable_contact(data)
+        DatabaseOperation(DB_FILENAME).disable_contact(data)
         check = self.connection.execute(
             "select visible from leads where email = 'test@testdomain.com'"
         )
         test_result = check.fetchall()
         self.assertEqual(0, test_result[0][0])
+
+    def test_insert_duplicate_email_fails(self) -> None:
+        """
+        Test if the insert method returns an exception if a duplicate is attempted
+        @return:
+        """
+        data = {
+            "first_name": "Cin",
+            "last_name": "Arolbun",
+            "phone_number": "18005551111",
+            "email": "cBun@imperialsecuritybureau.com",
+            "subject": "Green Bisect",
+            "message": "Jedi spotted at Markeb, please advise.",
+            "visible": 1,
+        }
+        DatabaseOperation(DB_FILENAME).insert_contact_data(data)
+        op_result = DatabaseOperation(DB_FILENAME).insert_contact_data(data)
+        self.assertEqual(False, op_result)
 
 
 if __name__ == "__main__":

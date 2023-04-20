@@ -6,7 +6,7 @@ import sys
 import logging
 from unittest import TestCase
 
-DB_NAME_FILENAME = ":memory:"
+DB_NAME_FILENAME = "test.db"
 DB_TABLE_NAME = "leads"
 
 
@@ -32,13 +32,17 @@ class MockDatabase(TestCase):
         if cls.connection:
             # try to create database
             try:
+                # Clear out old data before creating table.
+                cls.connection.execute("drop table if exists leads")
+                cls.connection.commit()
+                # create new table
                 cls.connection.execute(
                     f"create table if not exists {DB_TABLE_NAME}("
                     "id INTEGER PRIMARY KEY,"
                     "first_name TEXT NOT NULL,"
                     "last_name TEXT NOT NULL,"
                     "phone_number TEXT NOT NULL,"
-                    "email TEXT NOT NULL,"
+                    "email TEXT UNIQUE NOT NULL,"
                     "subject TEXT NOT NULL,"
                     "message TEXT NOT NULL,"
                     "visible INTEGER NOT NULL)"
@@ -60,11 +64,11 @@ class MockDatabase(TestCase):
                 test_form_data,
             )
             cls.connection.commit()
-            logging.info("Insertion of test data into %s succeeded", DB_TABLE_NAME)
+            print("Insertion of test data into %s succeeded", DB_TABLE_NAME)
         except sqlite3.Error as error:
-            logging.error("Test data insertion failed. Error: %s", error)
+            print("Test data insertion failed. Error: %s", error)
 
     @classmethod
     def tearDownClass(cls) -> None:
         cls.connection.close()
-        logging.info("Database has been dropped!")
+        logging.info("Connection has been closed.")
