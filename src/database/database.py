@@ -21,10 +21,11 @@ class DatabaseOperation:
         if sqlite_connection:
             self.connection = sqlite_connection
         else:
-            self.connection = sqlite3.connect(db_file_name)
+            self.connection = sqlite3.connect(db_file_name, check_same_thread=False)
         logging.basicConfig(
             filename="database.log", encoding="utf8", level=logging.DEBUG
         )
+        self.create_leads_table("leads")
 
     def create_leads_table(self, db_table_name: str) -> bool:
         """

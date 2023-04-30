@@ -1,34 +1,28 @@
 """
-This module is the main web app loop
+This module is the main web app loop. Contains the app factory.
 """
-from flask import Flask, render_template, request
+from flask import Flask
 from src.database.database import DatabaseOperation
-
-app = Flask(__name__)
-database = DatabaseOperation("contacts.db")
+from src.route_handler.route_handler import config_routs
 
 
-@app.route("/")
-def home():
+def app_factory(testing=False):
     """
-    Returns index template located in templates folder
-    @return: str
+    Allows for application configuration for testing or production
+    @return: Flask object
     """
-    return render_template("index.html")
-
-
-@app.route("/ContactMe", methods=["GET", "POST"])
-def contact_me():
-    """
-    Returns contact page template & posts form data to the web app.
-    @return:
-    """
-    if request.method == "POST":
-        database.insert_contact_data(request.form)
-        return render_template("contact.html")
+    web_app = Flask(__name__)
+    if testing:
+        database = DatabaseOperation("test.db")
     else:
-        return render_template("contact.html")
+        database = DatabaseOperation("contacts.db")
+    return web_app, database
+
+
+app_instance, database_instance = app_factory()
+
+config_routs(app_instance, database_instance)
 
 
 if __name__ == "__main__":
-    app.run()
+    app_instance.run()
