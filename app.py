@@ -3,7 +3,7 @@ This module is the main web app loop. Contains the app factory.
 """
 from flask import Flask
 from src.database.database import DatabaseOperation
-from src.route_handler.route_handler import config_routs
+from src.route_handler.route_handler import config_routes
 
 
 def app_factory(testing=False):
@@ -21,7 +21,7 @@ def app_factory(testing=False):
 
 app_instance, database_instance = app_factory()
 
-config_routs(app_instance, database_instance)
+config_routes(app_instance, database_instance)
 
 
 if __name__ == "__main__":

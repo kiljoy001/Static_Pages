@@ -7,7 +7,7 @@ from selenium.webdriver.common.by import By
 from flask_testing import LiveServerTestCase
 from urllib.request import urlopen
 from app import app_factory
-from src.route_handler.route_handler import config_routs
+from src.route_handler.route_handler import config_routes
 import sqlite3
 
 
@@ -34,7 +34,7 @@ class ContactsPage(LiveServerTestCase):
         app_instance.config["DEBUG"] = True
         app_instance.config["LIVESERVER_TIMEOUT"] = 10
         app_instance.config["LIVESERVER_PORT"] = 0
-        config_routs(app_instance, database_instance)
+        config_routes(app_instance, database_instance)
         return app_instance
 
     def test_correct_data_input_passes(self) -> None:

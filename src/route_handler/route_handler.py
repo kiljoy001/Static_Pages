@@ -1,7 +1,7 @@
 from flask import render_template, request
 
 
-def config_routs(app_instance, database) -> None:
+def config_routes(app_instance, database) -> None:
     """
     Allows for injection of routes into tests, and separates view part of application from run file.
     @param database: This parameter is for injecting the missing DATABASE constant
