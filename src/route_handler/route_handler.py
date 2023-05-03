@@ -1,4 +1,5 @@
 from flask import render_template, request
+from flask_hcaptcha import hCaptcha
 
 
 def config_routes(app_instance, database) -> None:
@@ -8,6 +9,7 @@ def config_routes(app_instance, database) -> None:
     @param app_instance: an instance of Flask
     @return:
     """
+    hcaptcha = hCaptcha(app_instance)
 
     @app_instance.route("/")
     def home() -> str:
@@ -25,7 +27,7 @@ def config_routes(app_instance, database) -> None:
         @return:
         """
 
-        if request.method == "POST":
+        if request.method == "POST" and hcaptcha.verify():
             database.insert_contact_data(request.form)
             return render_template("thankyou.html")
         else:

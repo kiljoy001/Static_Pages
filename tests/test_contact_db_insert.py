@@ -8,6 +8,7 @@ from flask_testing import LiveServerTestCase
 from urllib.request import urlopen
 from app import app_factory
 from src.route_handler.route_handler import config_routes
+from selenium.common.exceptions import NoSuchElementException
 import sqlite3
 
 
@@ -38,8 +39,7 @@ class ContactsPage(LiveServerTestCase):
         return app_instance
 
     def test_correct_data_input_passes(self) -> None:
-        server_address: str = f"{self.get_server_url()}/ContactMe"
-        self.driver.get(server_address)
+        self.helper_go_to_page()
         for key, value in self.good_data.items():
             element = self.driver.find_element(By.ID, key)
             element.send_keys(value)
@@ -56,6 +56,19 @@ class ContactsPage(LiveServerTestCase):
         test_result = dict(zip(key_list, direct_query.fetchall()))
         retrieved_data = test_result
         self.assertEqual("Evan", retrieved_data["first_name"][0])
+
+    def test_hcaptcha_renders_on_page(self) -> None:
+        self.helper_go_to_page()
+        try:
+            self.driver.find_element(By.CLASS_NAME, "h-captcha")
+            result = True
+        except NoSuchElementException:
+            result = False
+        self.assertEqual(True, result)
+
+    def helper_go_to_page(self) -> None:
+        server_address: str = f"{self.get_server_url()}/ContactMe"
+        self.driver.get(server_address)
 
 
 if __name__ == "__main__":
