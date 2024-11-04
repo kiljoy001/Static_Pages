@@ -5,9 +5,6 @@ import unittest
 from src.database.database import DatabaseOperation
 import tests.database_mock
 
-DB_FILENAME = "test.db"
-
-
 class MyTestCase(tests.database_mock.MockDatabase):
     """
     Database Test Class
@@ -29,10 +26,9 @@ class MyTestCase(tests.database_mock.MockDatabase):
             "visible": 1,
         }
         # Act
-        result = DatabaseOperation(DB_FILENAME).insert_contact_data(data)
-        expected = True
-        # Assert
-        self.assertEqual(result, expected)
+
+        result = self.db_operation.insert_contact_data(data)
+        self.assertTrue(result)
 
     def test_get_contact(self) -> None:
         """
@@ -47,17 +43,27 @@ class MyTestCase(tests.database_mock.MockDatabase):
             "subject",
             "message",
         ]
-        data = "test@testdomain.com"
-        direct_query = self.connection.execute(
-            "select first_name, last_name, phone_number, email, subject, message "
-            "from leads where email = 'test@testdomain.com' and visible = 1"
-        )
-        test_result = dict(zip(key_list, direct_query.fetchall()))
+        data = {
+            "first_name": "John",
+            "last_name": "Smith",
+            "phone_number": "15554567",
+            "email": "test@testdomain.com",
+            "subject": "Testing this out!",
+            "message": "This is a test message, please ignore!",
+            "visible": 1,
+        }
 
+        self.db_operation.insert_contact_data(data)
+        direct_query = self.connection.execute(
+        "select first_name, last_name, phone_number, email, subject, message "
+        "from leads where email = ? and visible = 1", (data["email"],)
+        )
+        row = direct_query.fetchone()
+        test_result = dict(zip(key_list, row))
         # Compare results
         self.assertEqual(
             test_result,
-            DatabaseOperation(DB_FILENAME).get_contact(data),
+            self.db_operation.get_contact(data["email"]),
         )
 
     def test_update_contact(self) -> None:
@@ -76,25 +82,55 @@ class MyTestCase(tests.database_mock.MockDatabase):
             "You will be sent to the republic army instead.",
             "visible": 1,
         }
-        DatabaseOperation(DB_FILENAME).update_contact(data, "jYoda@jediorder.com")
-        direct_query = self.connection.execute(
-            "select first_name from leads where email = 'jYessler@republicarmy.com'"
+
+        original_data = {
+            "first_name": "Jacob",
+            "last_name": "Yoda",
+            "phone_number": "18005551111",
+            "email": "jYoda@jediorder.com",
+            "subject": "Secret",
+            "message": "Beware the dark side of the test.",
+            "visible": 1,
+            }
+        self.db_operation.insert_contact_data(original_data)
+        # verify original data
+        cursor = self.connection.execute(
+            "select * from leads where email = ? and visible = 1", (original_data["email"],)
         )
-        test_result = direct_query.fetchall()
-        self.assertEqual("Jason", test_result[0][0])
+        original_entry = cursor.fetchone()
+        self.assertIsNotNone(original_entry, "Original contact data is not found")
+
+        # update contact
+        result = self.db_operation.update_contact(data, "jYoda@jediorder.com")
+        self.assertTrue(result, "Update operation failed.")
+
+        direct_query = self.connection.execute(
+            "select first_name from leads where email = ?", ("jYessler@republicarmy.com",)
+            )
+        test_result = direct_query.fetchone()
+        self.assertEqual("Jason", test_result[0])
 
     def test_disable_contact(self) -> None:
         """
         Tests if row is marked disabled in database
         @return:
         """
-        data = "test@testdomain.com"
-        DatabaseOperation(DB_FILENAME).disable_contact(data)
+        data = {
+            "first_name": "John",
+            "last_name": "Smith",
+            "phone_number": "15554567",
+            "email": "test@testdomain.com",
+            "subject": "Testing this out!",
+            "message": "This is a test message, please ignore!",
+            "visible": 1,
+        }
+        self.db_operation.insert_contact_data(data)
+        self.db_operation.disable_contact(data["email"])
         check = self.connection.execute(
-            "select visible from leads where email = 'test@testdomain.com'"
+            "select visible from leads where email = ?", ("test@testdomain.com",)
         )
-        test_result = check.fetchall()
-        self.assertEqual(0, test_result[0][0])
+        test_result = check.fetchone()
+        self.assertEqual(0, test_result[0])
 
     def test_insert_duplicate_email_fails(self) -> None:
         """
@@ -110,8 +146,10 @@ class MyTestCase(tests.database_mock.MockDatabase):
             "message": "Jedi spotted at Markeb, please advise.",
             "visible": 1,
         }
-        DatabaseOperation(DB_FILENAME).insert_contact_data(data)
-        op_result = DatabaseOperation(DB_FILENAME).insert_contact_data(data)
+
+        self.db_operation.insert_contact_data(data)
+        op_result = self.db_operation.insert_contact_data(data)
+
         self.assertEqual(False, op_result)
 
 
