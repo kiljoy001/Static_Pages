@@ -2,6 +2,8 @@
 This module contains tests for class DatabaseOperation
 """
 import unittest
+from datetime import datetime
+
 from src.database.database import DatabaseOperation
 import tests.database_mock
 
@@ -152,6 +154,37 @@ class MyTestCase(tests.database_mock.MockDatabase):
 
         self.assertEqual(False, op_result)
 
+    def test_role_type_has_correct_permission(self) -> None:
+        """
+        Test if the role has the correct type of permission
+        @return:
+        """
+        roles = {
+            "Administrator": "Administrator",
+            "Editor": "Editor",
+            "Appointment Setter": "Appointment",
+
+        }
+
+    def test_appointment_saved_to_database(self) -> None:
+        """
+        Tests if appointment has been saved to database
+        @return:
+        """
+        # Arrange
+        date = datetime.now()
+        event_name = "Test Contact"
+        phone_number = "+155555555"
+        location = "Location 1"
+        lead_message = "Interested in your services"
+
+        # Act
+        test_appointment = Appointment(date, event_name, phone_number, location, lead_message)
+        test_appointment.save()
+
+        #Assert
+        list_of_appointments = self.db_operation.get_appointments(date)
+        assert list_of_appointments == [test_appointment]
 
 if __name__ == "__main__":
     unittest.main()
