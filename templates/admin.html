@@ -45,5 +45,35 @@
             {% endfor %}
         </tbody>
     </table>
+
+    <h2>Pages</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Route</th>
+                <th>Title</th>
+                <th>Content Preview</th>
+                <th>Image</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for page in pages %}
+            <tr>
+                <td>{{ page.route }}</td>
+                <td>{{ page.title }}</td>
+                <td>{{ page.content[:50] }}...</td>
+                <td>
+                    {% if page.image_url %}
+                    <img src="{{ page.image_url }}" alt="Image" style="max-width: 50px; max-height: 50px;">
+                    {% else %}
+                    No Image
+                    {% endif %}
+                </td>
+                <td><a href="/admin/edit_page/{{ page.route }}">Edit</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </body>
 </html>

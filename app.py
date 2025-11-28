@@ -1,13 +1,26 @@
 """
 This module is the main web app loop
 """
-from flask import Flask, render_template, request
+import os
+from werkzeug.utils import secure_filename
+from flask import Flask, render_template, request, redirect, url_for
 from src.database.database import DatabaseOperation
+from src.page import Page
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
 database = DatabaseOperation("contacts.db")
 database.create_leads_table("leads")
 database.create_appointment_table("appointments")
+database.create_pages_table("pages")
+
+# Seed default pages if they don't exist
+if not database.get_page_by_route("home"):
+    database.insert_page(Page(route="home", title="Welcome", content="Welcome to our website!"))
+if not database.get_page_by_route("services"):
+    database.insert_page(Page(route="services", title="Our Services", content="Here are our services."))
+if not database.get_page_by_route("gallery"):
+    database.insert_page(Page(route="gallery", title="Gallery", content="Check out our work."))
 
 
 @app.route("/")
@@ -16,7 +29,27 @@ def home():
     Returns index template located in templates folder
     @return: str
     """
-    return render_template("index.html")
+    page = database.get_page_by_route("home")
+    return render_template("index.html", page=page)
+
+@app.route("/services")
+def services():
+    """
+    Returns services template
+    @return: str
+    """
+    page = database.get_page_by_route("services")
+    return render_template("services.html", page=page)
+
+
+@app.route("/gallery")
+def gallery():
+    """
+    Returns gallery template
+    @return: str
+    """
+    page = database.get_page_by_route("gallery")
+    return render_template("gallery.html", page=page)
 
 
 @app.route("/ContactMe", methods=["GET", "POST"])
@@ -37,11 +70,40 @@ def contact_me():
 @app.route("/admin")
 def admin():
     """
-    Returns admin page template with all contacts
+    Returns admin page template with all contacts and pages
     @return:
     """
     contacts = database.get_all_contacts()
-    return render_template("admin.html", contacts=contacts)
+    pages = database.get_all_pages()
+    return render_template("admin.html", contacts=contacts, pages=pages)
+
+
+@app.route("/admin/edit_page/<route>", methods=["GET", "POST"])
+def edit_page(route):
+    """
+    Edit a page
+    """
+    page = database.get_page_by_route(route)
+    if not page:
+        return "Page not found", 404
+
+    if request.method == "POST":
+        title = request.form.get("title")
+        content = request.form.get("content")
+        image = request.files.get("image")
+        image_url = page.image_url
+
+        if image and image.filename:
+            filename = secure_filename(image.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            image.save(filepath)
+            image_url = url_for('static', filename=f'uploads/{filename}')
+
+        updated_page = Page(route=route, title=title, content=content, image_url=image_url)
+        database.update_page(updated_page)
+        return redirect(url_for('admin'))
+
+    return render_template("edit_page.html", page=page)
 
 
 if __name__ == "__main__":

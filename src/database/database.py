@@ -5,6 +5,7 @@ import sqlite3
 import logging
 from datetime import datetime
 from src.appointment import Appointment
+from src.page import Page
 
 DB_NAME_FILENAME = "data.db"
 DB_TABLE_NAME = "leads"
@@ -113,6 +114,28 @@ class DatabaseOperation:
             logging.error("Unable to create database table %s. %s", db_table_name, error)
             return False
 
+    def create_pages_table(self, db_table_name: str) -> bool:
+        """
+        Creates a new table for pages
+        @param db_table_name: name of the new table
+        @return: bool
+        """
+        try:
+            self.connection.execute(
+                f"create table if not exists {db_table_name}("
+                "id INTEGER PRIMARY KEY,"
+                "route TEXT UNIQUE NOT NULL,"
+                "title TEXT NOT NULL,"
+                "content TEXT NOT NULL,"
+                "image_url TEXT)"
+            )
+            self.connection.commit()
+            logging.info("Database table %s was created", db_table_name)
+            return True
+        except sqlite3.Error as error:
+            logging.error("Unable to create database table %s. %s", db_table_name, error)
+            return False
+
     def insert_appointment(self, appointment: Appointment) -> bool:
         """
         Inserts appointment into appointments table
@@ -176,6 +199,83 @@ class DatabaseOperation:
             return appointments
         except sqlite3.Error as error:
             logging.error("Appointments not found. Error: %s", error)
+            return []
+
+    def insert_page(self, page: Page) -> bool:
+        """
+        Inserts page into pages table
+        @param page: Page object
+        @return: bool
+        """
+        try:
+            self.connection.execute(
+                "INSERT INTO pages (route, title, content, image_url)"
+                "VALUES (?, ?, ?, ?)",
+                (page.route, page.title, page.content, page.image_url),
+            )
+            self.connection.commit()
+            logging.info("Page inserted into database")
+            return True
+        except sqlite3.Error as error:
+            logging.error("Page insertion failed :(\n%s", error)
+            return False
+
+    def update_page(self, page: Page) -> bool:
+        """
+        Updates page in pages table
+        @param page: Page object
+        @return: bool
+        """
+        try:
+            cursor = self.connection.execute(
+                "UPDATE pages SET title = ?, content = ?, image_url = ? WHERE route = ?",
+                (page.title, page.content, page.image_url, page.route),
+            )
+            self.connection.commit()
+            if cursor.rowcount == 0:
+                logging.warning("No page found with route: %s", page.route)
+                return False
+            logging.info("Page %s has been updated.", page.route)
+            return True
+        except sqlite3.Error as error:
+            logging.error("Page update failed :(\n%s", error)
+            return False
+
+    def get_page_by_route(self, route: str) -> Page | None:
+        """
+        Returns page by route
+        @param route: route string
+        @return: Page object or None
+        """
+        try:
+            fetch = self.connection.execute(
+                "select route, title, content, image_url from pages where route = ?",
+                (route,)
+            )
+            row = fetch.fetchone()
+            if row:
+                return Page(route=row[0], title=row[1], content=row[2], image_url=row[3])
+            logging.warning("Page %s not found", route)
+            return None
+        except sqlite3.Error as error:
+            logging.error("Page lookup failed. Error: %s", error)
+            return None
+
+    def get_all_pages(self) -> list[Page]:
+        """
+        Returns all pages
+        @return: list of Page objects
+        """
+        try:
+            fetch = self.connection.execute("select route, title, content, image_url from pages")
+            returned_data = fetch.fetchall()
+            pages = []
+            for row in returned_data:
+                pages.append(Page(route=row[0], title=row[1], content=row[2], image_url=row[3]))
+            logging.info("All pages were found")
+            return pages
+        except sqlite3.Error as error:
+            logging.error("Pages were not found. Error: %s", error)
             return []
 
     def insert_contact_data(self, data: dict) -> bool:
