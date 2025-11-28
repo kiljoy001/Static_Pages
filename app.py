@@ -6,6 +6,8 @@ from src.database.database import DatabaseOperation
 
 app = Flask(__name__)
 database = DatabaseOperation("contacts.db")
+database.create_leads_table("leads")
+database.create_appointment_table("appointments")
 
 
 @app.route("/")
@@ -24,10 +26,22 @@ def contact_me():
     @return:
     """
     if request.method == "POST":
-        database.insert_contact_data(request.form)
+        data = dict(request.form)
+        data["visible"] = 1
+        database.insert_contact_data(data)
         return render_template("contact.html")
     else:
         return render_template("contact.html")
+
+
+@app.route("/admin")
+def admin():
+    """
+    Returns admin page template with all contacts
+    @return:
+    """
+    contacts = database.get_all_contacts()
+    return render_template("admin.html", contacts=contacts)
 
 
 if __name__ == "__main__":

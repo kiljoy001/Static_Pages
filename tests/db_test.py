@@ -5,6 +5,7 @@ import unittest
 from datetime import datetime
 
 from src.database.database import DatabaseOperation
+from src.appointment import Appointment
 import tests.database_mock
 
 class MyTestCase(tests.database_mock.MockDatabase):
@@ -180,7 +181,7 @@ class MyTestCase(tests.database_mock.MockDatabase):
 
         # Act
         test_appointment = Appointment(date, event_name, phone_number, location, lead_message)
-        test_appointment.save()
+        self.db_operation.insert_appointment(test_appointment)
 
         #Assert
         list_of_appointments = self.db_operation.get_appointments(date)

@@ -40,6 +40,15 @@ class MockDatabase(TestCase):
             "message TEXT NOT NULL,"
             "visible INTEGER NOT NULL)"
         )
+        self.connection.execute(
+            "CREATE TABLE appointments ("
+            "id INTEGER PRIMARY KEY,"
+            "date TEXT NOT NULL,"
+            "event_name TEXT NOT NULL,"
+            "phone_number TEXT NOT NULL,"
+            "location TEXT NOT NULL,"
+            "message TEXT NOT NULL)"
+        )
         self.connection.commit()
         logging.info(f"Database {DB_NAME_FILENAME} has been created.")
         logging.info(f"Database table {DB_TABLE_NAME} was created.")
