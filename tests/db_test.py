@@ -5,6 +5,8 @@ import unittest
 from datetime import datetime
 
 from src.database.database import DatabaseOperation
+from src.appointment import Appointment
+from src.page import Page
 import tests.database_mock
 
 class MyTestCase(tests.database_mock.MockDatabase):
@@ -180,11 +182,51 @@ class MyTestCase(tests.database_mock.MockDatabase):
 
         # Act
         test_appointment = Appointment(date, event_name, phone_number, location, lead_message)
-        test_appointment.save()
+        self.db_operation.insert_appointment(test_appointment)
 
         #Assert
         list_of_appointments = self.db_operation.get_appointments(date)
         assert list_of_appointments == [test_appointment]
+
+    def test_insert_and_get_page(self) -> None:
+        """
+        Tests insert_page and get_page_by_route
+        """
+        page = Page(route="test", title="Test Page", content="Test Content")
+        self.db_operation.insert_page(page)
+
+        retrieved_page = self.db_operation.get_page_by_route("test")
+        self.assertEqual(page, retrieved_page)
+
+    def test_update_page(self) -> None:
+        """
+        Tests update_page
+        """
+        page = Page(route="test", title="Test Page", content="Test Content")
+        self.db_operation.insert_page(page)
+
+        updated_page = Page(route="test", title="Updated Title", content="Updated Content", image_url="img.png")
+        self.db_operation.update_page(updated_page)
+
+        retrieved_page = self.db_operation.get_page_by_route("test")
+        self.assertEqual(updated_page, retrieved_page)
+
+    def test_get_all_pages(self) -> None:
+        """
+        Tests get_all_pages
+        """
+        page1 = Page(route="p1", title="T1", content="C1")
+        page2 = Page(route="p2", title="T2", content="C2")
+        self.db_operation.insert_page(page1)
+        self.db_operation.insert_page(page2)
+
+        pages = self.db_operation.get_all_pages()
+        # Order is not guaranteed, so check length and containment
+        self.assertEqual(2, len(pages))
+        # Note: pages returned might be in different order or identity might not be preserved if not careful with list comparison
+        # But our Page.__eq__ handles content comparison.
+        self.assertTrue(page1 in pages)
+        self.assertTrue(page2 in pages)
 
 if __name__ == "__main__":
     unittest.main()
