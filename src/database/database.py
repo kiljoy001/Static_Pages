@@ -25,6 +25,7 @@ class DatabaseOperation:
         logging.basicConfig(
             filename="database.log", encoding="utf8", level=logging.DEBUG
         )
+        self.encryption = EncryptionService()
 
     def __enter__(self):
         return self
@@ -72,13 +73,16 @@ class DatabaseOperation:
         @return: bool
         """
         try:
+            # Note: email column is now encrypted and NOT unique by itself (randomized).
+            # We add email_hash for uniqueness and lookup.
             self.connection.execute(
                 f"create table if not exists {db_table_name}("
                 "id INTEGER PRIMARY KEY,"
                 "first_name TEXT NOT NULL,"
                 "last_name TEXT NOT NULL,"
                 "phone_number TEXT NOT NULL,"
-                "email TEXT UNIQUE NOT NULL,"
+                "email TEXT NOT NULL,"
+                "email_hash TEXT UNIQUE,"
                 "subject TEXT NOT NULL,"
                 "message TEXT NOT NULL,"
                 "visible INTEGER NOT NULL)"
@@ -284,16 +288,22 @@ class DatabaseOperation:
         @type data: dict
         """
         try:
+            data_copy = data.copy()
+            data_copy["phone_number"] = self.encryption.encrypt(data["phone_number"])
+            data_copy["email"] = self.encryption.encrypt(data["email"])
+            data_copy["email_hash"] = get_hash(data["email"])
+
             self.connection.execute(
                 "INSERT INTO leads (first_name,"
                 "last_name,"
                 "phone_number,"
                 "email,"
+                "email_hash,"
                 "subject,"
                 "message,"
                 "visible)"
-                "VALUES (:first_name, :last_name, :phone_number, :email, :subject, :message, :visible)",
-                data,
+                "VALUES (:first_name, :last_name, :phone_number, :email, :email_hash, :subject, :message, :visible)",
+                data_copy,
             )
             self.connection.commit()
             logging.info("Data inserted into database")
@@ -308,7 +318,8 @@ class DatabaseOperation:
         @param email: email address
         """
         try:
-            self.connection.execute("UPDATE leads set visible=0 where email = ?", (email,))
+            email_hash = get_hash(email)
+            self.connection.execute("UPDATE leads set visible=0 where email_hash = ?", (email_hash,))
             self.connection.commit()
             logging.info("Email address %s was disabled.", email)
             return True
@@ -319,13 +330,19 @@ class DatabaseOperation:
     def update_contact(self, data: dict, email: str) -> bool:
         """
         Updates contacts from leads database, updates all fields
-        @param email: is the email address to look for to do the update op
+        @param email: is the email address to look for to do the update op (plain text)
         @param data: dict[str|int] Keys much match table columns
         @return: bool
         """
         try:
-            params = {**data, "email_old": email}
-            logging.debug("Parameters for update: %s", params)
+            email_hash_old = get_hash(email)
+
+            data_copy = data.copy()
+            data_copy["phone_number"] = self.encryption.encrypt(data["phone_number"])
+            data_copy["email"] = self.encryption.encrypt(data["email"])
+            data_copy["email_hash"] = get_hash(data["email"])
+            data_copy["email_hash_old"] = email_hash_old
+
             cursor = self.connection.execute(
                 """
                 UPDATE leads SET
@@ -333,12 +350,13 @@ class DatabaseOperation:
                     last_name = :last_name,
                     phone_number = :phone_number,
                     email = :email,
+                    email_hash = :email_hash,
                     subject = :subject,
                     message = :message,
                     visible = :visible
-                WHERE email = :email_old
+                WHERE email_hash = :email_hash_old
                 """,
-                params,
+                data_copy,
             )
             self.connection.commit()
             if cursor.rowcount == 0:
@@ -365,14 +383,23 @@ class DatabaseOperation:
             "message",
         ]
         try:
+            email_hash = get_hash(data)
             fetch = self.connection.execute(
-                f"select first_name, last_name, phone_number, email, subject, message"
-                f" from leads where visible = 1 and email = '{data}'"
+                "select first_name, last_name, phone_number, email, subject, message"
+                " from leads where visible = 1 and email_hash = ?",
+                (email_hash,)
             )
             returned_data = fetch.fetchone()
-            formatted_dict = dict(zip(d_keys, returned_data))
-            logging.info("Contact %s was found", data)
-            return formatted_dict
+
+            if returned_data:
+                formatted_dict = dict(zip(d_keys, returned_data))
+                formatted_dict["email"] = self.encryption.decrypt(formatted_dict["email"])
+                formatted_dict["phone_number"] = self.encryption.decrypt(formatted_dict["phone_number"])
+                logging.info("Contact %s was found", data)
+                return formatted_dict
+
+            logging.warning("Contact %s not found", data)
+            return {}
         except sqlite3.Error as error:
             logging.error("%s was not found. Error: %s", data, error)
             return {}
