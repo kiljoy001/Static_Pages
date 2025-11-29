@@ -6,20 +6,21 @@
     <link href="../static/css/style.css" rel="stylesheet">
 </head>
 <body>
-    <form>
+    <form method="POST">
         <div class="container">
             <div class="grid-item"><label for="first_name">First Name</label></div>
             <div class="grid-item"><label for="last_name">Last Name</label></div>
-            <div class="grid-item"><label for="phone">Phone Number</label></div>
+            <div class="grid-item"><label for="phone_number">Phone Number</label></div>
             <div class="grid-item"><input type="text" id="first_name" name="first_name"></div>
             <div class="grid-item"><input type="text" id="last_name" name="last_name"></div>
-            <div class="grid-item"><input type="text" id="phone" name="phone"></div>
+            <div class="grid-item"><input type="text" id="phone_number" name="phone_number"></div>
             <div class="grid-item"><label for="email">Email Address</label></div>
             <div class="grid-item"><label for="subject">What do you want to talk about?</label></div>
             <div class="grid-item"><label for="message">Your message:</label></div>
             <div class="grid-item"><input type="text" id="email" name="email"></div>
             <div class="grid-item"><input type="text" id="subject" name="subject"></div>
             <div class="grid-item"><textarea id="message" name="message"></textarea></div>
+            <div class="grid-item"><input type="submit" value="Submit"></div>
         </div>
     </form>
 </body>
