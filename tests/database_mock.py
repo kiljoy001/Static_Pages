@@ -35,10 +35,28 @@ class MockDatabase(TestCase):
             "first_name TEXT NOT NULL,"
             "last_name TEXT NOT NULL,"
             "phone_number TEXT NOT NULL,"
-            "email TEXT UNIQUE NOT NULL,"
+            "email TEXT NOT NULL,"
+            "email_hash TEXT UNIQUE,"
             "subject TEXT NOT NULL,"
             "message TEXT NOT NULL,"
             "visible INTEGER NOT NULL)"
+        )
+        self.connection.execute(
+            "CREATE TABLE appointments ("
+            "id INTEGER PRIMARY KEY,"
+            "date TEXT NOT NULL,"
+            "event_name TEXT NOT NULL,"
+            "phone_number TEXT NOT NULL,"
+            "location TEXT NOT NULL,"
+            "message TEXT NOT NULL)"
+        )
+        self.connection.execute(
+            "CREATE TABLE pages ("
+            "id INTEGER PRIMARY KEY,"
+            "route TEXT UNIQUE NOT NULL,"
+            "title TEXT NOT NULL,"
+            "content TEXT NOT NULL,"
+            "image_url TEXT)"
         )
         self.connection.commit()
         logging.info(f"Database {DB_NAME_FILENAME} has been created.")
