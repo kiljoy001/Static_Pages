@@ -4,8 +4,11 @@ Module for interacting with sql database.
 import sqlite3
 import logging
 from datetime import datetime
+import hashlib
 from src.appointment import Appointment
 from src.page import Page
+from src.encryption import EncryptionService
+from src.hashing import get_hash
 
 DB_NAME_FILENAME = "data.db"
 DB_TABLE_NAME = "leads"
@@ -147,13 +150,14 @@ class DatabaseOperation:
         @return: bool
         """
         try:
+            encrypted_phone = self.encryption.encrypt(appointment.phone_number)
             self.connection.execute(
                 "INSERT INTO appointments (date, event_name, phone_number, location, message)"
                 "VALUES (?, ?, ?, ?, ?)",
                 (
                     appointment.date.isoformat(),
                     appointment.event_name,
-                    appointment.phone_number,
+                    encrypted_phone,
                     appointment.location,
                     appointment.message,
                 ),
@@ -192,10 +196,11 @@ class DatabaseOperation:
             returned_data = fetch.fetchall()
             appointments = []
             for row in returned_data:
+                phone = self.encryption.decrypt(row[2])
                 appointments.append(Appointment(
                     date=datetime.fromisoformat(row[0]),
                     event_name=row[1],
-                    phone_number=row[2],
+                    phone_number=phone,
                     location=row[3],
                     message=row[4]
                 ))
@@ -423,7 +428,13 @@ class DatabaseOperation:
                 " from leads where visible = 1"
             )
             returned_data = fetch.fetchall()
-            contacts = [dict(zip(d_keys, row)) for row in returned_data]
+            contacts = []
+            for row in returned_data:
+                d = dict(zip(d_keys, row))
+                d["email"] = self.encryption.decrypt(d["email"])
+                d["phone_number"] = self.encryption.decrypt(d["phone_number"])
+                contacts.append(d)
+
             logging.info("All contacts were found")
             return contacts
         except sqlite3.Error as error:
