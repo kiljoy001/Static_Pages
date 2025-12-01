@@ -3,12 +3,25 @@ This module is the main web app loop
 """
 import os
 from werkzeug.utils import secure_filename
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
+from datetime import datetime
 from src.database.database import DatabaseOperation
 from src.page import Page
+from src.appointment import Appointment
+from src.notification import NotificationService
 
 app = Flask(__name__)
+notification_service = NotificationService()
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+# Ensure upload folder exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 database = DatabaseOperation("contacts.db")
 database.create_leads_table("leads")
 database.create_appointment_table("appointments")
@@ -52,6 +65,49 @@ def gallery():
     return render_template("gallery.html", page=page)
 
 
+@app.route("/appointments")
+def appointments():
+    """
+    Returns appointments template
+    @return: str
+    """
+    return render_template("appointments.html")
+
+
+@app.route("/save_appointment", methods=["POST"])
+def save_appointment():
+    """
+    Saves a new appointment
+    """
+    data = request.json
+    try:
+        # Expected date format YYYY-MM-DD from the frontend
+        # But Appointment model expects datetime object and we store isoformat.
+        # We need to decide what time to set or if just date is enough.
+        # The calendar sends YYYY-MM-DD. Let's default to a time or just parse as date.
+        # src/database/database.py expects Appointment object.
+
+        date_str = data.get("date")
+        # Parse YYYY-MM-DD
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+
+        appointment = Appointment(
+            date=date_obj,
+            event_name=data.get("event_name"),
+            phone_number=data.get("phone_number"),
+            location=data.get("location"),
+            message=data.get("message")
+        )
+
+        if database.insert_appointment(appointment):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Database error"})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
 @app.route("/ContactMe", methods=["GET", "POST"])
 def contact_me():
     """
@@ -78,6 +134,31 @@ def admin():
     return render_template("admin.html", contacts=contacts, pages=pages)
 
 
+@app.route("/admin/notify", methods=["POST"])
+def notify():
+    """
+    Sends notification via Twilio/SendGrid
+    """
+    contact_type = request.form.get("type") # email, sms, call
+    to = request.form.get("to")
+    message = request.form.get("message")
+    subject = request.form.get("subject", "Notification") # Only for email
+
+    if contact_type == "email":
+        success = notification_service.send_email(to, subject, message)
+    elif contact_type == "sms":
+        success = notification_service.send_sms(to, message)
+    elif contact_type == "call":
+        success = notification_service.make_call(to, message)
+    else:
+        return jsonify({"success": False, "error": "Invalid notification type"})
+
+    if success:
+        return redirect(url_for('admin'))
+    else:
+        return "Failed to send notification", 500
+
+
 @app.route("/admin/edit_page/<route>", methods=["GET", "POST"])
 def edit_page(route):
     """
@@ -93,7 +174,7 @@ def edit_page(route):
         image = request.files.get("image")
         image_url = page.image_url
 
-        if image and image.filename:
+        if image and image.filename and allowed_file(image.filename):
             filename = secure_filename(image.filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             image.save(filepath)
